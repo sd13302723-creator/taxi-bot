@@ -1,4 +1,3 @@
-
 import os
 import time
 import threading
@@ -27,8 +26,8 @@ def send_welcome(message):
         "• **Стаж вождения:** 15 лет\n"
         "• Аккуратное вождение и знание трассы\n"
         "• Чистый и комфортный салон\n"
-        "• Честные фиксированные цены (итоговая стоимость подтверждается водителем)\n"
-        "• Помощь с багажом пассажиров\n\n"
+        "• Честные фиксированные цены\n"
+        "• Помощь с багажом\n\n"
         "📞 **Телефон / WhatsApp:** `+996505910613`\n\n"
         "👇 **Выберите направление:**"
     )
@@ -57,8 +56,8 @@ def callback_direction(call):
         "• Дата и точное время\n"
         "• Откуда забрать и куда везти\n"
         "• Сколько человек / есть ли багаж\n\n"
-        "🎙 *Или просто запишите голосовое сообщение.*\n\n"
-        "⚠️ Отправляя данные, вы соглашаетесь на их передачу водителю исключительно для организации поездки."
+        "🎙 *Или запишите голосовое сообщение.*\n\n"
+        "⚠️ Данные передаются водителю исключительно для организации поездки."
     )
     bot.answer_callback_query(call.id)
     bot.send_message(call.message.chat.id, instruction, parse_mode="Markdown")
@@ -67,14 +66,10 @@ def callback_direction(call):
 def handle_order(message):
     user = message.from_user
     user_id = user.id
-    chosen_dir = user_states.get(user_id, "Не выбрано (прямое сообщение)")
-    
+    chosen_dir = user_states.get(user_id, "Не выбрано")
     username = f"@{user.username}" if user.username else user.first_name
     
-    if message.content_type == 'voice':
-        content_desc = "🎙 [Голосовое сообщение]"
-    else:
-        content_desc = message.text
+    content_desc = "🎙 [Голосовое сообщение]" if message.content_type == 'voice' else message.text
 
     order_text = (
         f"🚖 **Новый заказ такси!**\n\n"
@@ -99,9 +94,9 @@ def handle_order(message):
 
     bot.reply_to(
         message,
-        "✅ **Ваша заявка получена!**\n\n"
-        "Игорь рассмотрит заказ и свяжется с вами для подтверждения поездки и стоимости.\n"
-        "Если вопрос срочный — звоните или пишите в WhatsApp: `+996505910613`",
+        "✅ **Ваша заявка принята!**\n\n"
+        "Игорь свяжется с вами для подтверждения поездки.\n"
+        "Срочно? Звоните: `+996505910613`",
         parse_mode="Markdown"
     )
 
@@ -110,12 +105,27 @@ def admin_response(call):
     parts = call.data.split("_")
     action = parts[0]
     target_user_id = int(parts[1])
-
     bot.answer_callback_query(call.id)
 
     if action == "accept":
-        bot.send_message(target_user_id, "✅ **Ваш заказ принят!** Водитель Игорь подтвердил поездку и скоро свяжется с вами.", parse_mode="Markdown")
-        bot.edit_message_text(call.message.text + "\n\n🟢 **СТАТУС:** Заказ принят водителем.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+        bot.send_message(target_user_id, "✅ **Ваш заказ принят!** Водитель подтвердил поездку.", parse_mode="Markdown")
+        bot.edit_message_text(call.message.text + "\n\n🟢 **СТАТУС:** Заказ принят.", chat_id=call.message.chat.id, message_id=call.message.message_id)
     else:
-        bot.send_message(target_user_id, "❌ К сожалению, на это время машина занята. Вы можете уточнить другое время по телефону/WhatsApp: +996505910613", parse_mode="Markdown")
-        bot.edit_message_text(call.message.text + "\
+        bot.send_message(target_user_id, "❌ К сожалению, машина на это время занята. Свяжитесь по телефону: +996505910613", parse_mode="Markdown")
+        bot.edit_message_text(call.message.text + "\n\n🔴 **СТАТУС:** Отклонено.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+
+def run_bot():
+    while True:
+        try:
+            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Ошибка связи: {e}")
+            time.sleep(5)
+
+if __name__ == "__main__":
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
